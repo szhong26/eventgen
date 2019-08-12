@@ -34,7 +34,7 @@ EVENTGEN_DIR = os.path.realpath(os.path.join(FILE_PATH, ".."))
 EVENTGEN_ENGINE_CONF_PATH = os.path.abspath(os.path.join(FILE_PATH, "default", "eventgen_engine.conf"))
 
 
-class EventGenerator(object):
+class EventGenerator(object): #this class is called when we write "splunk_evengent generate /filepath/to/conf"
     def __init__(self, args=None):
         '''
         This object will allow you to generate and control eventgen.  It should be handed the parse_args object
@@ -55,17 +55,24 @@ class EventGenerator(object):
         # attach to the logging queue
         self.logger.info("Logging Setup Complete.")
 
-        self._generator_queue_size = getattr(self.args, 'generator_queue_size', 500)
+        self._generator_queue_size = getattr(self.args, 'generator-queue-size', 500) #(SZ CHANGES) I think 'generator_queue_size' -> 'generator-queue-size'. See main() parse_args. Gets attribute 'generator-queue-size'. If not found, then use 500
         if self._generator_queue_size < 0:
             self._generator_queue_size = 0
         self.logger.info("Set generator queue size", queue_size=self._generator_queue_size)
 
+        #if config file is part of the input in args, then the below of self._load_config is automatically run since __init__ is the default 
+        #constructor 
         if self.args and 'configfile' in self.args and self.args.configfile:
             self._load_config(self.args.configfile, args=args)
 
-    def _load_config(self, configfile, **kwargs):
+    #ex of **kwargs
+    #def myFun(**kwargs):  
+    #for key, value in kwargs.items(): 
+    #    print ("%s == %s" %(key, value)) 
+
+    def _load_config(self, configfile, **kwargs): #(SZ NOTES) called in the default constructor for this class(EventGenerator class)
         '''
-        This method will use a configfile and set self.confg as a processeded config object,
+        This method will use a configfile and set self.config as a processeded config object,
         kwargs will need to match eventgenconfig.py
         :param configfile:
         :return:
@@ -97,6 +104,8 @@ class EventGenerator(object):
                 new_args["sample"] = args.sample
             if getattr(args, "verbosity"):
                 new_args["verbosity"] = args.verbosity
+                
+        #self.config is set as a Config object here.
         self.config = Config(configfile, **new_args)
         self.config.parse()
         self.args.multiprocess = True if self.config.threading == "process" else self.args.multiprocess
@@ -413,13 +422,16 @@ class EventGenerator(object):
                         self.logger.exception(str(e))
                         raise e
         return ret
-
-    def start(self, join_after_start=True):
-        self.stopping = False
+    #---------------------------------------------
+    #(SZ Changes/Notes) This function is run to start generating data. The start() method is
+    #called in __main__.py under method main()
+    #---------------------------------------------
+    def start(self, join_after_start=True): 
+        self.stopping = False 
         self.started = True
         self.config.stopping = False
         self.completed = False
-        if len(self.config.samples) <= 0:
+        if len(self.config.samples) <= 0: #edge case of no samples found in config object. 
             self.logger.info("No samples found.  Exiting.")
         for s in self.config.samples:
             if s.interval > 0 or s.mode == 'replay' or s.end != "0":
