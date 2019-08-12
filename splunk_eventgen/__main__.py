@@ -4,7 +4,7 @@ Copyright (C) 2005-2015 Splunk Inc. All Rights Reserved.
 
 from __future__ import division
 
-import argparse
+import argparse #python included package to parse
 import errno
 import logging
 import os
@@ -22,7 +22,7 @@ from logging_config import logger  # noqa isort:skip
 EVENTGEN_VERSION = splunk_eventgen_init.__version__
 
 
-def parse_args():
+def parse_args(): #this function returns an args variable which is a argparse.ArgumentParser.parse_args() object
     """Parse command line arguments"""
     subparser_dict = {}
     parser = argparse.ArgumentParser(prog='Eventgen', description='Splunk Event Generation Tool')
@@ -202,12 +202,13 @@ def gather_env_vars(args):
 
 
 def main():
-    cwd = os.getcwd()
-    args = parse_args()
+    cwd = os.getcwd() #get current directory
+    args = parse_args() #initialize the args that users can provide when running from command line. For ex, users can run the command "splunk_eventgen generate mixed_all_data_eg/default/eventgen.conf";
     args.verbosity = convert_verbosity_count_to_logging_level(args.verbosity)
-    if args.subcommand == "generate":
-        eventgen = eventgen_core.EventGenerator(args=args)
-        eventgen.start()
+    #splunk_eventgen can accept three arguments, either "splunk_eventgen generate", "splunk_eventgen service", or "splunk event_gen build"
+    if args.subcommand == "generate": #this command starts generating data. See comment above. 
+        eventgen = eventgen_core.EventGenerator(args=args) #Initialize EventGenerator object, which is an object which accepts the user defined args object. The args are given in command line. Look at default constructor for this class
+        eventgen.start() #ALGORITHM ENDS AFTER THIS LINE
     elif args.subcommand == "service":
         env_vars = gather_env_vars(args)
         if args.role == "controller":
@@ -227,4 +228,34 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    #Sichen's Code. PUT HACKY CODE HERE. WE WILL WAIT wait_time number of seconds and then print whatever is in the terminal into a txt file.
+    #The original code in this function is only the line main()
+    
+    #ORIGINAL CODE-------------------------------
+    #main()
+    #--------------------------------------------
+
+    import os #to call os.stat('filename').st_size to check for filesize
+    import multiprocessing
+    import sys #to access sys.stdout
+    
+    TIMEOUT = 15
+    print_filepath = '/Users/szhong/Desktop/Sichen/Work/github_clones/eventGen/es_performance_data/mixed_all_data_eg/' + 'eventgen_data_output.txt'
+    sys.stdout = open(print_filepath, 'w') #redirect all print to eventgen_data_output.txt
+    print_file_stats = os.stat(print_filepath) #print_file_stats.st_size gives size in bytes. 1 byte = 1e-9 GB
+
+    p = multiprocessing.Process(target = main)
+    print('----------------------------GENERATING EVENTS...----------------------------')
+    p.start()
+    p.join(TIMEOUT)
+
+    if p.is_alive():
+        p.terminate()
+
+    print('----------------------------TIMEOUT EXCEEDED...----------------------------')
+    print('----------------------------Terminating main...----------------------------')
+    
+    
+
+
+    
