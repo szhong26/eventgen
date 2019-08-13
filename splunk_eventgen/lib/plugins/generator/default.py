@@ -9,8 +9,14 @@ import random
 from generatorplugin import GeneratorPlugin
 from logging_config import logger
 
+#SZ CHANGES------------
+import copy
+#----------------------
+
 
 class DefaultGenerator(GeneratorPlugin):
+    #When DefaultGenerator is instantiated with parameter GeneratorPlugin(object in generatorplugin)
+    #the default construct immediately calls the default constructor for GeneratorPlugin. 
     def __init__(self, sample):
         GeneratorPlugin.__init__(self, sample)
 
