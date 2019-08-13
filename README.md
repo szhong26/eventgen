@@ -1,5 +1,8 @@
 # Splunk Event Generator (Eventgen)
 
+This fork fixes(maybe?) a bug with Eventgen always generating the same random values for a sample type.
+Please contact Sichen Zhong at szhong@splunk.com for any questions.
+
 ### Status
 [![CircleCI](https://circleci.com/gh/splunk/eventgen/tree/develop.svg?style=svg&circle-token=15e952a75e368102d8cebc6d9445af87e6c7d57e)](https://circleci.com/gh/splunk/eventgen/tree/develop)
 
