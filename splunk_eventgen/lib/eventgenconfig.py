@@ -34,6 +34,10 @@ STANDALONE = False
 # 5/10/12 CS Some people consider Singleton to be lazy.  Dunno, I like it for convenience.
 # My general thought on that sort of stuff is if you don't like it, reimplement it.  I'll consider
 # your patch.
+
+#(SZ NOTES)
+#Config class is called in eventgen_core.load_config(), which is called in the default constructor for
+#class EventGenerator (eventgen_core.py), which is itself called in main() (__main__.py)
 class Config(object):
     """Reads configuration from files or Splunk REST endpoint and stores them in a 'Borg' global.
     Borg is a variation on the Singleton design pattern which allows us to continually instantiate
@@ -245,7 +249,8 @@ class Config(object):
             "Getting Splunk URL: %s Method: %s Host: %s Port: %s" % (splunkUrl, splunkMethod, splunkHost, splunkPort))
         return (splunkUrl, splunkMethod, splunkHost, splunkPort)
 
-    def parse(self):
+    #CRUCIAL FUNCTION TO READ THROUGH (config.parse()) 500 lines of code are here...
+    def parse(self): 
         """Parse configs from Splunk REST Handler or from files.
         We get called manually instead of in __init__ because we need find out if we're Splunk embedded before
         we figure out how to configure ourselves.

@@ -4,7 +4,10 @@ from Queue import Full
 from timeparser import timeParserTimeMath
 from logging_config import logger
 
-
+#-----------------------------------------------------
+#(SZ CHANGES/NOTES): Here the Timer class is defined. The Timer class is called in
+# eventgen_core.start() 
+#-----------------------------------------------------
 class Timer(object):
     """
     Overall governor in Eventgen. A timer is created for every sample in Eventgen. The Timer has the responsibility

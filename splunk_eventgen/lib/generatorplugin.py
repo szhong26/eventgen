@@ -15,8 +15,14 @@ from eventgentimestamp import EventgenTimestamp
 from timeparser import timeParser
 from logging_config import logger
 
+#SZ CHANGES---------------------
+import copy
+#-------------------------------
 
-class GeneratorPlugin(object):
+#(SZ NOTES)
+#This object is called in splunk_eventgen/lib/plugins/generator/default.py
+#and in the file splunk_eventgen/lib/plugins/generator/perdayvolumegenerator.py
+class GeneratorPlugin(object): 
     sampleLines = None
     sampleDict = None
 
@@ -33,10 +39,43 @@ class GeneratorPlugin(object):
     def __repr__(self):
         return self.__str__()
 
+    #earliest and latest are unchanged in method build_events below.
     def build_events(self, eventsDict, startTime, earliest, latest, ignore_tokens=False):
         """Ready events for output by replacing tokens and updating the output queue"""
+
         # Replace tokens first so that perDayVolume evaluates the correct event length
+        #-----------------------------------------------
+        #(SZ NOTES)
+        # method self.replace_tokens() is called below. The input eventsDict is dict of dicts, where each key is targetEvent
+        # The output send_objects is a list of targetevent type dictionaries where targetevent["_raw"] has been updated with 
+        # the generated random values. See how targetevent is defined below. It seems that our bug is even before self.replace_tokens since
+        # even the index generated in the first couple lines of replace_tokens is the same.
+        
+        #SZ CODE BEGIN--------------------------
+        #eventsDict_copy = []
+        #print '----------------------PRE replace.tokens---------------------'
+        #print 'eventsDict length:', len(eventsDict)
+        #for targetevent in eventsDict:
+        #    targetevent_copy = copy.deepcopy(targetevent)
+        #    eventsDict_copy.append(targetevent_copy)
+        #    print ''
+        #    print targetevent['_raw']
+        #    print ''
+        #eventsDict = eventsDict_copy
+        #SZ CODE END----------------------------
+
+        #BEGIN ORIGINAL CODE-------------------------------------
+        #print 'beginning to call send_objects...'
         send_objects = self.replace_tokens(eventsDict, earliest, latest, ignore_tokens=ignore_tokens)
+        #print ''
+        #END ORIGINAL CODE-------------------------------------
+        
+        #print '-----------------------POST replace.tokens-----------------------------'
+        #print 'After calling replace_tokens on eventsDict'
+        #for targetevent in send_objects:
+        #    print targetevent['_raw']
+        #print '-----------------------END PRINT-----------------------------'
+        #-----------------------------------------------
         try:
             self._out.bulksend(send_objects)
             self._sample.timestamp = None
@@ -86,8 +125,10 @@ class GeneratorPlugin(object):
             self._sample.host = event['host']
             # Allow randomizing the host:
             if self._sample.hostToken:
+                #---------------------------------------------------
+                #(SZ NOTES) tokens.replace() from eventgentoken.py called here
                 self.host = self._sample.hostToken.replace(self.host)
-
+                #---------------------------------------------------
             self._sample.source = event['source']
             self._sample.sourcetype = event['sourcetype']
             logger.debug("Setting CSV parameters. index: '%s' host: '%s' source: '%s' sourcetype: '%s'" %
@@ -171,6 +212,11 @@ class GeneratorPlugin(object):
             logger.debug("Queue is not empty, flush out at the end of each run")
             self._out.flush()
 
+    #-------------------------------------------------
+    #SZ CHANGES/COMMENTS
+    #the method replace_tokens calls token.replace() from eventgentoken.py!!!
+    #earliest, and latest, are fixed in the function below!!!
+    #-------------------------------------------------
     def replace_tokens(self, eventsDict, earliest, latest, ignore_tokens=False):
         """Iterate event tokens and replace them. This will help calculations for event size when tokens are used."""
         eventcount = 0
@@ -179,8 +225,31 @@ class GeneratorPlugin(object):
         index = None
         if total_count > 0:
             index = random.choice(self._sample.index_list) if len(self._sample.index_list) else eventsDict[0]['index']
-        for targetevent in eventsDict:
+        
+        #(SZ Changes)-----------------------------------------
+        #for targetevent in eventsDict:
+        #    print ''
+        #    print 'targetevent _raw:', targetevent['_raw']
+        #    print ''
+        #-----------------------------------------------------
+
+        for targetevent in eventsDict: #loops over every targetevent dictionary and assigns the tokens in the event with random values.
+            #---------------------------------------------------
+            #(SZ NOTES) The unicode event variable for CPUTime.perfmon looks like:
+            # 04/14/2011 11:53:26.486
+            # collection="CPU Load"
+            # object=Processor
+            # counter=##Counter##
+            # instance=##Instance##
+            # Value=##Value##
+            #
+            # targetevent dictionary holds all necessary information for the event template.
+            # Its keys are 'index', 'sourcetype', '_time', 'source', 'host', 'hostRegex', '_raw'
+            # The random generation happens only in the raw data, AKA targetevent['_raw']
+            #---------------------------------------------------
+
             event = targetevent["_raw"]
+
             # Maintain state for every token in a given event, Hash contains keys for each file name which is
             # assigned a list of values picked from a random line in that file
             mvhash = {}
@@ -190,12 +259,15 @@ class GeneratorPlugin(object):
                 pivot_timestamp = EventgenTimestamp.get_sequential_timestamp(earliest, latest, eventcount, total_count)
             else:
                 pivot_timestamp = EventgenTimestamp.get_random_timestamp(earliest, latest)
-            # Iterate tokens
-            if not ignore_tokens:
+            # Iterate through tokens as long as option is not set to ignore. 
+            if not ignore_tokens: #ignore_tokens is part of the input. If set to true, then none of the tokens are replaced!!!
+                #loop below replaces each token in the event with a random value, one by one. 
+                #For example, for CPUTime.perfmon, ##Counter##, ##Instance##, and ##Value## are replaced one by one via the loop below.
                 for token in self._sample.tokens:
                     token.mvhash = mvhash
                     event = token.replace(event, et=earliest, lt=latest, s=self._sample,
                                           pivot_timestamp=pivot_timestamp)
+                    #if the replacementType of the token is timestamp, replace it with something else instead
                     if token.replacementType == 'timestamp' and self._sample.timeField != '_raw':
                         self._sample.timestamp = None
                         token.replace(targetevent[self._sample.timeField], et=self._sample.earliestTime(),

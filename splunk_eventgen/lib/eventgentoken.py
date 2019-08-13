@@ -12,9 +12,14 @@ import time
 import urllib
 import uuid
 
+#SZ CHANGES-------------
+import datetime
+#-----------------------
+
+
+
 from timeparser import timeDelta2secs
 from logging_config import logger
-
 
 class Token(object):
     """Contains data and methods for replacing a token in a given sample"""
@@ -74,8 +79,32 @@ class Token(object):
         tokenMatch = list(self._finditer(event))
 
         if len(tokenMatch) > 0:
+            #--------------------------------------------------------
+            #(SZ NOTES) self._getReplacement is an extremely important function since it actually
+            #generates the random values. It is ONLY called here below. 
+
+            #print 'current time:', datetime.datetime.now()
+            #print 'param old:', event[tokenMatch[0].start(0):tokenMatch[0].end(0)]
+            #print 'param earliestTime:', et
+            #print 'param latestTime:', lt
+            #print 's:', type(s)
+            #print 'pivot_timestamp:', pivot_timestamp
+
             replacement = self._getReplacement(event[tokenMatch[0].start(0):tokenMatch[0].end(0)], et, lt, s,
                                                pivot_timestamp=pivot_timestamp)
+            #(SZ NOTES/CHANGES) When the print statements below are uncommented, it seems
+            #that our output text file of events indicates that replace was called numerous times first
+            #before the output is generated in the txt file. The below statements are printed
+            #at the beginning of the output file roughly 4-6 times(depends on how long main is run)
+            #replacement can equal string, float, etc... depending on replacementType
+            #print('')
+            #print('replacement equals', replacement)
+            #print('')
+            #--------------------------------------------------------
+
+            # (SZ CHANGES)
+            # if replacementType is not 'replaytimestamp', then we can skip the entire if statement below
+
             if replacement is not None or self.replacementType == 'replaytimestamp':
                 # logger.debug("Replacement: '%s'" % replacement)
                 # Iterate matches
@@ -110,7 +139,14 @@ class Token(object):
                 self._replaytd = None
                 self._lastts = None
         return event
-
+    #(SZ NOTES)
+    #old is a string which indicates the string to be replaced. For example, in CPUTime.perfmon,
+    #old could be '##Counter##', '##Instance##', ##Value##', '04/14/2011 11:53:26.486'
+    #earliestTime is a string which describes time. For ex. '2019-08-12 11:03:25.664288'
+    #latestTime is a string which describes time. For ex. '2019-08-12 11:03:26.664769'
+    #s is a instance of the class object <lib.eventgensamples.Sample>
+    #pivot_timestamp is a string which describes time. For ex. '2019-08-12 11:03:26'
+    
     def _getReplacement(self, old=None, earliestTime=None, latestTime=None, s=None, pivot_timestamp=None):
         if self.replacementType == 'static':
             return self.replacement
@@ -245,7 +281,11 @@ class Token(object):
                 endInt = int(integerMatch.group(2))
 
                 if endInt >= startInt:
+                    #----------------------------------------------------
+                    #(SZ NOTES) RANDOM NUMBER GENERATION HAPPENS HERE FOR INT TYPE
+                    #REPLACE replacementInt WITH DESIRED VALUE
                     replacementInt = random.randint(startInt, endInt)
+                    #----------------------------------------------------
                     if self.replacementType == 'rated':
                         rateFactor = 1.0
                         if type(s.hourOfDayRate) == dict:
@@ -284,7 +324,11 @@ class Token(object):
                         significance = len(floatMatch.group(2))
 
                     if endFloat >= startFloat:
+                        #----------------------------------------------------
+                        #(SZ NOTES) RANDOM GENERATION HAPPENS HERE FOR FLOAT TYPE. 
+                        # REPLACE floatret WITH DESIRED VALUE!!!!
                         floatret = round(random.uniform(startFloat, endFloat), significance)
+                        #----------------------------------------------------
                         if self.replacementType == 'rated':
                             rateFactor = 1.0
                             now = s.now()
